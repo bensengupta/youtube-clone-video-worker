@@ -1,0 +1,5 @@
+*.mp4
+*.m3u8
+*.mpd
+ffmpeg/manpages/
+ffmpeg/model/
