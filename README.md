@@ -7,6 +7,7 @@ DASH and HLS manifests for streaming, and re-uploads it.
 
 ## Requirements
 
+- Git LFS (to clone this repository)
 - Python 3
 
 ## Usage
