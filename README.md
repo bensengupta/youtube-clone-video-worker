@@ -2,6 +2,9 @@
 
 Video worker for [youtube-clone](https://github.com/bensengupta/youtube-clone)
 
+Downloads a video, transcodes it to various resolutions, packages it as
+DASH and HLS manifests for streaming, and re-uploads it.
+
 ## Requirements
 
 - Python 3
