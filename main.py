@@ -248,7 +248,7 @@ def send_completion_callback(metadata: VideoMetadata):
         return
     print("Sending callback to", CALLBACK_URL)
     requests.post(
-        CALLBACK_URL,
+        f"{CALLBACK_URL}/complete",
         json={
             "video_id": VIDEO_ID,
             "duration": int(metadata.duration_seconds),
