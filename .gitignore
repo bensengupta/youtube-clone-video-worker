@@ -5,3 +5,4 @@ ffmpeg/manpages/
 ffmpeg/model/
 out/*
 !out/.gitkeep
+.env

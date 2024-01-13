@@ -1,0 +1,3 @@
+requests==2.31.0
+# AWS SDK for Python
+boto3==1.34.18

@@ -2,15 +2,29 @@ import json
 import mimetypes
 import os
 import sys
-from typing import TypedDict
 
+import boto3
 import requests
 
 TASK_ATTEMPT = os.getenv("CLOUD_RUN_TASK_ATTEMPT", 0)
 
-DOWNLOAD_URL = os.getenv("DOWNLOAD_URL")
+CLOUDFLARE_R2_ACCOUNT_ID = os.getenv("CLOUDFLARE_R2_ACCOUNT_ID")
+CLOUDFLARE_R2_ACCESS_KEY_ID = os.getenv("CLOUDFLARE_R2_ACCESS_KEY_ID")
+CLOUDFLARE_R2_SECRET_ACCESS_KEY = os.getenv("CLOUDFLARE_R2_SECRET_ACCESS_KEY")
+CLOUDFLARE_R2_BUCKET_NAME = os.getenv("CLOUDFLARE_R2_BUCKET_NAME")
 
+VIDEO_ID = os.getenv("VIDEO_ID")
 CALLBACK_URL = os.getenv("CALLBACK_URL")
+
+upload_key = f"video/{VIDEO_ID}"
+
+s3 = boto3.client(
+    service_name="s3",
+    endpoint_url=f"https://{CLOUDFLARE_R2_ACCOUNT_ID}.r2.cloudflarestorage.com",
+    aws_access_key_id=CLOUDFLARE_R2_ACCESS_KEY_ID,
+    aws_secret_access_key=CLOUDFLARE_R2_SECRET_ACCESS_KEY,
+    region_name="auto",
+)
 
 
 class VideoMetadata:
@@ -37,9 +51,12 @@ class VideoQuality:
 def download_input_mp4():
     print("\n===== Downloading input.mp4 =====")
 
-    resp = requests.get(DOWNLOAD_URL)
     with open("input.mp4", "wb") as f:
-        f.write(resp.content)
+        s3.download_fileobj(
+            CLOUDFLARE_R2_BUCKET_NAME,
+            f"video/{VIDEO_ID}/original",
+            f,
+        )
 
 
 def gather_metadata():
@@ -199,14 +216,9 @@ def get_file_size(filepath: str):
 
 
 def get_file_mimetype(filepath: str):
+    if filepath.endswith(".mpd"):
+        return "application/dash+xml"
     return mimetypes.guess_type(filepath)[0]
-
-
-class CallbackPostResponse(TypedDict):
-    multipart_upload_id: str
-    upload_key: str
-    presigned_urls: list[str]
-    part_size: int
 
 
 def upload_files(filepaths: list[str]):
@@ -215,60 +227,49 @@ def upload_files(filepaths: list[str]):
     print(filepaths)
 
     for filepath in filepaths:
-        req_json = {
-            "file_name": get_base_filename(filepath),
-            "file_size": get_file_size(filepath),
-            "content_type": get_file_mimetype(filepath),
-        }
-
-        print("Requesting upload of", filepath, ":", req_json)
-
-        resp = requests.post(f"{CALLBACK_URL}/request-file-upload", json=req_json)
-
-        if not resp.ok:
-            raise Exception(f"Upload request failed ({resp.status_code}): {resp.text}")
-
-        resp_json: CallbackPostResponse = resp.json()
-
-        part_data = []
-
         with open(filepath, "rb") as f:
-            print("Reading", filepath)
-            for idx, presigned_url in enumerate(resp_json["presigned_urls"]):
-                print("Uploading part", idx + 1, "of", filepath)
-                part_resp = requests.put(
-                    presigned_url, data=f.read(resp_json["part_size"])
-                )
-                part_data.append(
-                    {
-                        "PartNumber": idx + 1,
-                        "ETag": part_resp.headers["ETag"],
-                    }
-                )
+            upload_key = f"video/{VIDEO_ID}/{get_base_filename(filepath)}"
+            mimetype = get_file_mimetype(filepath)
 
-        resp = requests.post(
-            f"{CALLBACK_URL}/finish-file-upload",
-            json={
-                "upload_key": resp_json["upload_key"],
-                "multipart_upload_id": resp_json["multipart_upload_id"],
-                "parts": part_data,
-            },
-        )
+            print("Uploading", filepath, "as", upload_key, "with mimetype", mimetype)
+
+            s3.upload_fileobj(
+                f,
+                CLOUDFLARE_R2_BUCKET_NAME,
+                upload_key,
+                ExtraArgs={"ContentType": mimetype},
+            )
+
+
+def send_completion_callback(metadata: VideoMetadata):
+    print("\n===== Send completion callback =====")
+    if not CALLBACK_URL:
+        print("Skipped")
+        return
+    print("Sending callback to", CALLBACK_URL)
+    requests.post(
+        CALLBACK_URL,
+        json={
+            "video_id": VIDEO_ID,
+            "duration": int(metadata.duration_seconds),
+        },
+    )
 
 
 def main():
-    # download_input_mp4()
-    # create_thumbnail()
+    download_input_mp4()
+    create_thumbnail()
     metadata = gather_metadata()
     qualities = determine_qualities(metadata)
     run_transcode(metadata, qualities)
     files_to_upload = generate_manifest(qualities)
     upload_files(files_to_upload)
+    send_completion_callback(metadata)
 
 
 # Start script
 if __name__ == "__main__":
-    print(f"Starting processing of {DOWNLOAD_URL}")
+    print(f"Starting processing of video {VIDEO_ID}")
     try:
         main()
     except Exception as err:
