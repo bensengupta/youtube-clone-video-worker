@@ -260,8 +260,6 @@ def send_completion_callback(metadata: VideoMetadata):
 def main():
     print("=== running system ffmpeg -version ===")
     os.system("ffmpeg -version")
-    print("=== running ./ffmpeg/ffmpeg -version ===")
-    os.system("./ffmpeg/ffmpeg -version")
 
     return
     download_input_mp4()
