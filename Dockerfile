@@ -1,6 +1,6 @@
-# Use the official lightweight Python image.
+# Use the official Python image.
 # https://hub.docker.com/_/python
-FROM python:3.12-slim
+FROM python:3.12-bookworm
 
 # Allow statements and log messages to immediately appear in the logs
 ENV PYTHONUNBUFFERED True
@@ -9,6 +9,9 @@ ENV PYTHONUNBUFFERED True
 ENV APP_HOME /app
 WORKDIR $APP_HOME
 COPY . ./
+
+# install ffmpeg and ffprobe
+# sudo apt-get install -y ffmpeg ffprobe
 
 # Install production dependencies.
 RUN pip install --no-cache-dir -r requirements.txt

@@ -260,16 +260,10 @@ def send_completion_callback(metadata: VideoMetadata):
 def main():
     print("=== running ls ===")
     os.system("ls -la ffmpeg")
-    print("=== running ffmpeg -version ===")
+    print("=== running ./ffmpeg/ffmpeg -version ===")
     os.system("./ffmpeg/ffmpeg -version")
-    print("=== running mispelled ffmpez -version ===")
-    os.system("./ffmpeg/ffmpez -version")
-    print("=== running ffmpeg -version in subprocess  ===")
-    process = subprocess.Popen(
-        ["./ffmpeg/ffmpeg", "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
-    )
-    stdout, stderr = process.communicate()
-    print(stdout)
+    print("=== running /app/ffmpeg -version ===")
+    os.system("/app/ffmpeg/ffmpeg -version")
 
     return
     download_input_mp4()
