@@ -179,7 +179,8 @@ def run_transcode(metadata: VideoMetadata, qualities: list[VideoQuality]):
         "-an",  # remove audio
         f"-r {frame_rate}",  # keep framerate (max 60fps)
         f"-g {frame_rate * 2}",  # keyframe interval (max 2 seconds)
-        "-crf 22",  # constant rate factor, lower is better quality
+        "-preset veryfast",  # encoding speed - tradeoff between speed and quality
+        "-crf 23",  # constant rate factor, lower is better quality - tradeoff between quality and file size
         "-pix_fmt yuv420p",
         "-movflags faststart",
         "-map_metadata -1",  # remove metadata
