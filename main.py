@@ -1,6 +1,7 @@
 import json
 import mimetypes
 import os
+import subprocess
 import sys
 
 import boto3
@@ -59,6 +60,24 @@ def download_input_mp4():
         )
 
 
+def create_thumbnail():
+    print("\n===== Creating thumbnail =====")
+
+    command_parts = [
+        "./ffmpeg/ffmpeg",
+        "-i input.mp4",
+        "-ss 00:00:01.000",
+        "-vframes 1",
+        "-vf scale=320:180",
+        "out/thumbnail.jpg",
+    ]
+
+    command = " ".join(command_parts)
+
+    print(command)
+    os.system(command)
+
+
 def gather_metadata():
     print("\n===== Gathering metadata =====")
 
@@ -80,24 +99,6 @@ def gather_metadata():
     duration_seconds = float(output[3])
 
     return VideoMetadata(width, height, frame_rate, duration_seconds)
-
-
-def create_thumbnail():
-    print("\n===== Creating thumbnail =====")
-
-    command_parts = [
-        "./ffmpeg/ffmpeg",
-        "-i input.mp4",
-        "-ss 00:00:01.000",
-        "-vframes 1",
-        "-vf scale=320:180",
-        "out/thumbnail.jpg",
-    ]
-
-    command = " ".join(command_parts)
-
-    print(command)
-    os.system(command)
 
 
 def determine_qualities(metadata: VideoMetadata) -> list[VideoQuality]:
@@ -257,6 +258,18 @@ def send_completion_callback(metadata: VideoMetadata):
 
 
 def main():
+    print("=== running ls ===")
+    os.system("ls")
+    print("=== running ffmpeg -version ===")
+    os.system("./ffmpeg/ffmpeg -version")
+    print("=== running ffmpeg -version in subprocess  ===")
+    process = subprocess.Popen(
+        ["./ffmpeg/ffmpeg", "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
+    stdout, stderr = process.communicate()
+    print(stdout)
+
+    return
     download_input_mp4()
     create_thumbnail()
     metadata = gather_metadata()
