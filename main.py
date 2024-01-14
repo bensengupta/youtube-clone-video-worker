@@ -264,6 +264,8 @@ def main():
     os.system("./ffmpeg/ffmpeg -version")
     print("=== running /app/ffmpeg -version ===")
     os.system("/app/ffmpeg/ffmpeg -version")
+    print("=== running system ffmpeg -version ===")
+    os.system("ffmpeg -version")
 
     return
     download_input_mp4()
