@@ -11,7 +11,7 @@ WORKDIR $APP_HOME
 COPY . ./
 
 # install ffmpeg and ffprobe
-sudo apt-get install -y ffmpeg ffprobe
+RUN apt-get install -y ffmpeg ffprobe
 
 # Install production dependencies.
 RUN pip install --no-cache-dir -r requirements.txt
