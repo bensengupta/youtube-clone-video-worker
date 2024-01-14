@@ -28,6 +28,34 @@ s3 = boto3.client(
 )
 
 
+# logger for google cloud run
+class Logger:
+    def __init__(self):
+        pass
+
+    def info(self, *messages):
+        self._log("INFO", messages)
+
+    def debug(self, *messages):
+        self._log("DEBUG", messages)
+
+    def warn(self, *messages):
+        self._log("WARNING", messages)
+
+    def error(self, *messages):
+        self._log("ERROR", messages)
+
+    def _log(self, level: str, messages):
+        print(
+            json.dumps(
+                {"severity": level, "message": " ".join([str(m) for m in messages])}
+            )
+        )
+
+
+logger = Logger()
+
+
 class VideoMetadata:
     def __init__(
         self, width: int, height: int, frame_rate: int, duration_seconds: float
@@ -50,7 +78,7 @@ class VideoQuality:
 
 
 def download_input_mp4():
-    print("\n===== Downloading input.mp4 =====")
+    logger.info("\n===== Downloading input.mp4 =====")
 
     with open("input.mp4", "wb") as f:
         s3.download_fileobj(
@@ -61,7 +89,7 @@ def download_input_mp4():
 
 
 def create_thumbnail():
-    print("\n===== Creating thumbnail =====")
+    logger.info("\n===== Creating thumbnail =====")
 
     command_parts = [
         "ffmpeg",
@@ -74,12 +102,12 @@ def create_thumbnail():
 
     command = " ".join(command_parts)
 
-    print(command)
+    logger.debug(command)
     os.system(command)
 
 
 def gather_metadata():
-    print("\n===== Gathering metadata =====")
+    logger.info("\n===== Gathering metadata =====")
 
     command = [
         "ffprobe",
@@ -92,7 +120,7 @@ def gather_metadata():
     ]
 
     output = os.popen(" ".join(command)).read().split("\n")
-    print("ffprobe output", output)
+    logger.debug("ffprobe output", output)
     width = int(output[0])
     height = int(output[1])
     frame_rate = int(output[2].split("/")[0])
@@ -102,7 +130,7 @@ def gather_metadata():
 
 
 def determine_qualities(metadata: VideoMetadata) -> list[VideoQuality]:
-    print("\n===== Determining qualities =====")
+    logger.info("\n===== Determining qualities =====")
 
     qualities = [
         # 1080p
@@ -140,7 +168,7 @@ def determine_qualities(metadata: VideoMetadata) -> list[VideoQuality]:
 
 
 def run_transcode(metadata: VideoMetadata, qualities: list[VideoQuality]):
-    print("\n===== Running transcode =====")
+    logger.info("\n===== Running transcode =====")
 
     frame_rate = int(min(metadata.frame_rate, 60))
 
@@ -166,13 +194,13 @@ def run_transcode(metadata: VideoMetadata, qualities: list[VideoQuality]):
 
     command = f"ffmpeg -i input.mp4 {' '.join(subcommands)}"
 
-    print(command)
+    logger.debug(command)
 
     os.system(command)
 
 
 def generate_manifest(qualities: list[VideoQuality]):
-    print("\n===== Generating manifest =====")
+    logger.info("\n===== Generating manifest =====")
 
     def map_to_dash_stream(q: VideoQuality):
         return f"input={q.filepath},stream=video,output=out/video_{q.name}.mp4,playlist_name=out/video_{q.name}.m3u8,iframe_playlist_name=out/video_{q.name}_iframe.m3u8"
@@ -190,7 +218,7 @@ def generate_manifest(qualities: list[VideoQuality]):
 
     command = " ".join(command_parts)
 
-    print(command)
+    logger.debug(command)
 
     os.system(command)
 
@@ -223,16 +251,18 @@ def get_file_mimetype(filepath: str):
 
 
 def upload_files(filepaths: list[str]):
-    print("\n===== Uploading output =====")
+    logger.info("\n===== Uploading output =====")
 
-    print(filepaths)
+    logger.debug(filepaths)
 
     for filepath in filepaths:
         with open(filepath, "rb") as f:
             upload_key = f"video/{VIDEO_ID}/{get_base_filename(filepath)}"
             mimetype = get_file_mimetype(filepath)
 
-            print("Uploading", filepath, "as", upload_key, "with mimetype", mimetype)
+            logger.info(
+                "Uploading", filepath, "as", upload_key, "with mimetype", mimetype
+            )
 
             s3.upload_fileobj(
                 f,
@@ -243,11 +273,11 @@ def upload_files(filepaths: list[str]):
 
 
 def send_completion_callback(metadata: VideoMetadata):
-    print("\n===== Send completion callback =====")
+    logger.info("\n===== Send completion callback =====")
     if not CALLBACK_URL:
-        print("Skipped")
+        logger.warn("Skipped")
         return
-    print("Sending callback to", CALLBACK_URL)
+    logger.info("Sending callback to", CALLBACK_URL)
     requests.post(
         f"{CALLBACK_URL}/complete",
         json={
@@ -274,6 +304,6 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as err:
-        print(f"Video Worker failed (attempt #{TASK_ATTEMPT})")
-        print(err)
+        logger.error(f"Video Worker failed (attempt #{TASK_ATTEMPT})")
+        logger.error(err)
         sys.exit(1)  # Retry Job Task by exiting the process
