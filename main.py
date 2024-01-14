@@ -64,7 +64,7 @@ def create_thumbnail():
     print("\n===== Creating thumbnail =====")
 
     command_parts = [
-        "./ffmpeg/ffmpeg",
+        "ffmpeg",
         "-i input.mp4",
         "-ss 00:00:01.000",
         "-vframes 1",
@@ -82,7 +82,7 @@ def gather_metadata():
     print("\n===== Gathering metadata =====")
 
     command = [
-        "./ffmpeg/ffprobe",
+        "ffprobe",
         "-v error",
         "-select_streams v:0",
         "-show_entries stream=width,height,r_frame_rate",
@@ -164,7 +164,7 @@ def run_transcode(metadata: VideoMetadata, qualities: list[VideoQuality]):
 
     subcommands.append("-c:a aac -b:a 128k -map_metadata -1 out/audio.mp4")
 
-    command = f"./ffmpeg/ffmpeg -i input.mp4 {' '.join(subcommands)}"
+    command = f"ffmpeg -i input.mp4 {' '.join(subcommands)}"
 
     print(command)
 
@@ -180,7 +180,7 @@ def generate_manifest(qualities: list[VideoQuality]):
     subcommands = list(map(map_to_dash_stream, qualities))
 
     command_parts = [
-        "./shaka-packager/packager",
+        "packager",
         # audio stream
         f"input=out/audio.mp4,stream=audio,output=out/audio.mp4,playlist_name=out/audio.m3u8,hls_group_id=audio,hls_name=ENGLISH",
         *subcommands,
@@ -258,10 +258,6 @@ def send_completion_callback(metadata: VideoMetadata):
 
 
 def main():
-    print("=== running system ffmpeg -version ===")
-    os.system("ffmpeg -version")
-
-    return
     download_input_mp4()
     create_thumbnail()
     metadata = gather_metadata()
